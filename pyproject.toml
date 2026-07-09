@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "invest-sdk"
+version = "0.1.0"
+description = "Professional Python library for T-Bank Invest API"
+requires-python = ">=3.14"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Invest SDK Team" },
+]
+dependencies = [
+    "t-tech-investments>=1.0",
+]
+
+[project.optional-dependencies]
+excel = ["openpyxl>=3.0"]
+pdf = ["reportlab>=4.0"]
+charts = ["matplotlib>=3.0"]
+all = [
+    "openpyxl>=3.0",
+    "reportlab>=4.0",
+    "matplotlib>=3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/invest-sdk"
+
+[tool.setuptools.packages.find]
+include = ["invest_sdk*"]
