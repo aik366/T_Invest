@@ -77,6 +77,40 @@ def main() -> None:
                 Decimal("0"),
             )
 
+        
+
+        aggregated: dict[str, dict] = {}
+        total_agg_value = Decimal("0")
+        for acc in accounts:
+            if acc.type not in ("ACCOUNT_TYPE_TINKOFF", "ACCOUNT_TYPE_TINKOFF_IIS"):
+                continue
+            portfolio = client.get_portfolio(acc.id)
+            for pos in portfolio.positions:
+                if pos.ticker.startswith("RUB"):
+                    continue
+                if pos.ticker not in aggregated:
+                    aggregated[pos.ticker] = {
+                        "quantity": Decimal("0"),
+                        "total_cost": Decimal("0"),
+                        "current_price": pos.current_price,
+                        "total_yield": Decimal("0"),
+                        "total_daily_yield": Decimal("0"),
+                    }
+                agg = aggregated[pos.ticker]
+                agg["quantity"] += pos.quantity
+                agg["total_cost"] += pos.average_price * pos.quantity
+                agg["total_yield"] += pos.expected_yield
+                agg["total_daily_yield"] += pos.daily_yield
+
+        print("\nМой капитал")
+        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Доход':<12} {'За день':<12}")
+        for ticker, agg in aggregated.items():
+            avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
+            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {agg['current_price']:<12.2f} {agg['total_yield']:<+12.2f} {agg['total_daily_yield']:<+12.2f}")
+            total_agg_value += agg["current_price"] * agg["quantity"]
+
+        print(f"  Стоимость: {total_agg_value:,.2f} руб")
+        
         print(f"\n  Суммарная стоимость: {total_value:,.2f} руб")
         print(f"  Суммарный доход:     {total_yield:+,.2f} руб")
         print(f"  Суммарный доход за день: {total_daily_yield:+,.2f} руб")
