@@ -20,6 +20,16 @@ from t_tech.invest.schemas import (
 
 from invest_sdk.bootstrap import create_client
 
+GREEN = "\033[92m"
+RED = "\033[91m"
+RESET = "\033[0m"
+
+
+def _cval(val: Decimal, width: int = 0, comma: bool = False) -> str:
+    color = GREEN if val >= 0 else RED
+    fmt = f"{val:+,.2f}" if comma else f"{val:<+{width}.2f}"
+    return f"{color}{fmt}{RESET}"
+
 
 def load_token() -> str:
     """Загрузить токен из .env или переменной окружения."""
@@ -64,7 +74,7 @@ def main() -> None:
                     continue
                 yield_val = pos.expected_yield
                 daily_yield = pos.daily_yield
-                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {pos.current_price:<12.2f} {yield_val:<+12.2f} {daily_yield:<+12.2f}")
+                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {pos.current_price:<12.2f} {_cval(yield_val, 12)} {_cval(daily_yield, 12)}")
 
             print(f"  Стоимость: {summary.total_value:,.2f} руб")
             total_value += summary.total_value
@@ -106,14 +116,14 @@ def main() -> None:
         print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Доход':<12} {'За день':<12}")
         for ticker, agg in aggregated.items():
             avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
-            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {agg['current_price']:<12.2f} {agg['total_yield']:<+12.2f} {agg['total_daily_yield']:<+12.2f}")
+            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {agg['current_price']:<12.2f} {_cval(agg['total_yield'], 12)} {_cval(agg['total_daily_yield'], 12)}")
             total_agg_value += agg["current_price"] * agg["quantity"]
 
         print(f"  Стоимость: {total_agg_value:,.2f} руб")
         
         print(f"\n  Суммарная стоимость: {total_value:,.2f} руб")
-        print(f"  Суммарный доход:     {total_yield:+,.2f} руб")
-        print(f"  Суммарный доход за день: {total_daily_yield:+,.2f} руб")
+        print(f"  Суммарный доход:     {_cval(total_yield, comma=True)} руб")
+        print(f"  Суммарный доход за день: {_cval(total_daily_yield, comma=True)} руб")
 
         total_dividends = Decimal("0")
         for acc in accounts:
@@ -140,7 +150,7 @@ def main() -> None:
                 cursor = resp.next_cursor
 
         dividend_tax = total_dividends * Decimal("0.87")
-        print(f"  Дивиденды получено:  {total_dividends:+,.2f} руб ({dividend_tax:+,.2f} руб)")
+        print(f"  Дивиденды получено:  {_cval(total_dividends, comma=True)} руб ({_cval(dividend_tax, comma=True)} руб)")
 
 
 if __name__ == "__main__":
