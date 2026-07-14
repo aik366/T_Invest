@@ -63,8 +63,8 @@ class PortfolioService:
         result: list[PortfolioPosition] = []
         for pos in response.positions:
             avg_price = (
-                _money_value_to_decimal(pos.average_position_price)
-                or _money_value_to_decimal(pos.average_position_price_fifo)
+                _money_value_to_decimal(pos.average_position_price_fifo)
+                or _money_value_to_decimal(pos.average_position_price)
                 or _quotation_to_decimal(pos.average_position_price_pt)
                 or Decimal("0")
             )
