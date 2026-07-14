@@ -11,11 +11,11 @@ os.environ["GRPC_DEFAULT_SSL_ROOTS_FILE_PATH"] = certifi.where()
 os.environ["SSL_TBANK_VERIFY"] = "true"
 from datetime import datetime, timezone
 from decimal import Decimal
-import json
-import urllib.request
 
+from t_tech.invest import Client
 from t_tech.invest.schemas import (
     GetOperationsByCursorRequest,
+    InstrumentIdType,
     OperationState,
     OperationType,
 )
@@ -44,21 +44,6 @@ def load_token() -> str:
     except FileNotFoundError:
         pass
     return os.environ.get("INVEST_TOKEN", "")
-
-
-def fetch_moex_index(index_ticker: str = "IMOEX") -> tuple[float, float] | None:
-    url = f"https://iss.moex.com/iss/engines/stock/markets/index/securities/{index_ticker}.json"
-    try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        md = data.get("marketdata", {})
-        cols = md.get("columns", [])
-        rows = md.get("data", [])
-        if rows:
-            row = rows[0]
-            return row[cols.index("CURRENTVALUE")], row[cols.index("LASTCHANGEPRC")]
-    except Exception:
-        return None
 
 
 def main() -> None:
@@ -226,9 +211,17 @@ def main() -> None:
         print(f"  Уплачено комиссий:  {_cval(total_commission, comma=True)} руб")
         print(f"  Пополнения:         {_cval(total_deposits, comma=True)} руб")
 
-        index_data = fetch_moex_index()
-        if index_data:
-            value, change_pct = index_data
+        with Client(token) as moex_client:
+            response = moex_client.instruments.get_instrument_by(
+                id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_TICKER,
+                id="IMOEXF",
+                class_code="SPBFUT",
+            )
+            instrument = response.instrument
+            ob = moex_client.market_data.get_order_book(figi=instrument.figi, depth=1)
+            value = ob.last_price.units + ob.last_price.nano / 1_000_000_000
+            close = ob.close_price.units + ob.close_price.nano / 1_000_000_000
+            change_pct = (value - close) / close * 100 if close else 0
             color = GREEN if change_pct >= 0 else RED
             print(f"  Индекс МосБиржи:    {color}{int(value)} ({change_pct:+.2f}%){RESET}")
 
