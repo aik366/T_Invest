@@ -11,6 +11,8 @@ os.environ["GRPC_DEFAULT_SSL_ROOTS_FILE_PATH"] = certifi.where()
 os.environ["SSL_TBANK_VERIFY"] = "true"
 from datetime import datetime, timezone
 from decimal import Decimal
+import json
+import urllib.request
 
 from t_tech.invest.schemas import (
     GetOperationsByCursorRequest,
@@ -42,6 +44,21 @@ def load_token() -> str:
     except FileNotFoundError:
         pass
     return os.environ.get("INVEST_TOKEN", "")
+
+
+def fetch_moex_index(index_ticker: str = "IMOEX") -> tuple[float, float] | None:
+    url = f"https://iss.moex.com/iss/engines/stock/markets/index/securities/{index_ticker}.json"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        md = data.get("marketdata", {})
+        cols = md.get("columns", [])
+        rows = md.get("data", [])
+        if rows:
+            row = rows[0]
+            return row[cols.index("CURRENTVALUE")], row[cols.index("LASTCHANGEPRC")]
+    except Exception:
+        return None
 
 
 def main() -> None:
@@ -208,7 +225,12 @@ def main() -> None:
         print(f"  Прибыль от продаж:  {_cval(total_sale_profit, comma=True)} руб")
         print(f"  Уплачено комиссий:  {_cval(total_commission, comma=True)} руб")
         print(f"  Пополнения:         {_cval(total_deposits, comma=True)} руб")
-        
+
+        index_data = fetch_moex_index()
+        if index_data:
+            value, change_pct = index_data
+            color = GREEN if change_pct >= 0 else RED
+            print(f"  Индекс МосБиржи:    {color}{int(value)} ({change_pct:+.2f}%){RESET}")
 
 if __name__ == "__main__":
     main()
