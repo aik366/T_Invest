@@ -27,10 +27,45 @@ RED = "\033[91m"
 RESET = "\033[0m"
 
 
+def _price_with_chg(price: Decimal, chg: Decimal) -> str:
+    color = GREEN if chg >= 0 else RED
+    visible = f"{price:.2f}({chg:+.2f}%)"
+    return f"{price:.2f}{color}({chg:+.2f}%){RESET}{' ' * (20 - len(visible))}"
+
+
 def _cval(val: Decimal, width: int = 0, comma: bool = False) -> str:
     color = GREEN if val >= 0 else RED
     fmt = f"{val:+,.2f}" if comma else f"{val:<+{width}.2f}"
     return f"{color}{fmt}{RESET}"
+
+
+def _get_price_change(client, ticker: str, class_code: str = "") -> tuple[float | None, float | None]:
+    try:
+        response = client.instruments.get_instrument_by(
+            id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_TICKER,
+            id=ticker,
+            class_code=class_code,
+        )
+    except Exception:
+        return None, None
+    instrument = response.instrument
+    if instrument is None:
+        return None, None
+    ob = client.market_data.get_order_book(figi=instrument.figi, depth=1)
+    value = ob.last_price.units + ob.last_price.nano / 1_000_000_000
+    close = ob.close_price.units + ob.close_price.nano / 1_000_000_000
+    change_pct = (value - close) / close * 100 if close else 0
+    return value, change_pct
+
+
+def print_market_price(client, ticker: str, class_code: str = "", fmt_int: bool = False, label: str = "") -> None:
+    value, change_pct = _get_price_change(client, ticker, class_code)
+    if value is None:
+        print(f"  {label or ticker:<20} не найден")
+        return
+    color = GREEN if change_pct >= 0 else RED
+    val_str = f"{int(value)}" if fmt_int else f"{value:.2f}"
+    print(f"  {label or ticker:<20} {color}{val_str} ({change_pct:+.2f}%){RESET}")
 
 
 def load_token() -> str:
@@ -131,6 +166,17 @@ def main() -> None:
 
         DIV_TAX = Decimal("0.87")
 
+        # ── Fetch last & close prices for daily change ──
+        last_by_figi: dict[str, Decimal] = {}
+        close_by_figi: dict[str, Decimal] = {}
+        for figi in figi_to_ticker:
+            try:
+                ob = client._sdk.market_data.get_order_book(figi=figi, depth=1)
+                last_by_figi[figi] = Decimal(ob.last_price.units) + Decimal(ob.last_price.nano) / Decimal(1_000_000_000)
+                close_by_figi[figi] = Decimal(ob.close_price.units) + Decimal(ob.close_price.nano) / Decimal(1_000_000_000)
+            except Exception:
+                pass
+
         # ── Per-account tables ──
         total_value = Decimal("0")
         total_yield = Decimal("0")
@@ -143,16 +189,19 @@ def main() -> None:
             summary = client.portfolio_summary(acc.id)
             portfolio = client.get_portfolio(acc.id)
 
-            print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<14} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+            print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<20} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
             for pos in portfolio.positions:
                 if pos.ticker.startswith("RUB"):
                     continue
                 yield_val = pos.expected_yield
-                daily_yield = pos.daily_yield
+                daily_yield = pos.daily_yield              
                 div_gross = div_by_acc_figi.get((acc.id, pos.figi), Decimal("0"))
                 div_net = div_gross * DIV_TAX
                 adj_yield = yield_val + div_net
-                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {pos.current_price:<14.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
+                last = last_by_figi.get(pos.figi, pos.current_price)
+                close = close_by_figi.get(pos.figi, Decimal("0"))
+                chg = (last - close) / close * 100 if close else Decimal("0")
+                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {_price_with_chg(last, chg)} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
                 total_yield += yield_val
 
             print(f"  Стоимость: {summary.total_value:,.2f} руб")
@@ -179,6 +228,7 @@ def main() -> None:
                         "current_price": pos.current_price,
                         "total_yield": Decimal("0"),
                         "total_daily_yield": Decimal("0"),
+                        "figi": pos.figi,
                     }
                 agg = aggregated[pos.ticker]
                 agg["quantity"] += pos.quantity
@@ -187,14 +237,17 @@ def main() -> None:
                 agg["total_daily_yield"] += pos.daily_yield
 
         print("\nМой капитал")
-        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<14} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<20} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
         for ticker, agg in aggregated.items():
             avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
             div_gross = ticker_to_div.get(ticker, Decimal("0"))
             div_net = div_gross * DIV_TAX
             adj_yield = agg["total_yield"] + div_net
-            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {agg['current_price']:<14.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
-            total_agg_value += agg["current_price"] * agg["quantity"]
+            last = last_by_figi.get(agg['figi'], agg['current_price'])
+            close = close_by_figi.get(agg['figi'], Decimal("0"))
+            chg = (last - close) / close * 100 if close else Decimal("0")
+            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {_price_with_chg(last, chg)} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
+            total_agg_value += last * agg["quantity"]
 
         print(f"  Стоимость: {total_agg_value:,.2f} руб")
 
@@ -209,21 +262,13 @@ def main() -> None:
         print(f"  Купонов получено:   {_cval(total_coupon_gross, comma=True)} руб")
         print(f"  Прибыль от продаж:  {_cval(total_sale_profit, comma=True)} руб")
         print(f"  Уплачено комиссий:  {_cval(total_commission, comma=True)} руб")
-        print(f"  Пополнения:         {_cval(total_deposits, comma=True)} руб")
+        print(f"  Пополнения:         {_cval(total_deposits, comma=True)} руб\n")
 
         with Client(token) as moex_client:
-            response = moex_client.instruments.get_instrument_by(
-                id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_TICKER,
-                id="IMOEXF",
-                class_code="SPBFUT",
-            )
-            instrument = response.instrument
-            ob = moex_client.market_data.get_order_book(figi=instrument.figi, depth=1)
-            value = ob.last_price.units + ob.last_price.nano / 1_000_000_000
-            close = ob.close_price.units + ob.close_price.nano / 1_000_000_000
-            change_pct = (value - close) / close * 100 if close else 0
-            color = GREEN if change_pct >= 0 else RED
-            print(f"  Индекс МосБиржи:    {color}{int(value)} ({change_pct:+.2f}%){RESET}")
+            print_market_price(moex_client, "IMOEXF", "SPBFUT", fmt_int=True, label="Индекс МосБиржи")
+            print_market_price(moex_client, "SBERP", "TQBR")
+            print_market_price(moex_client, "TRNFP", "TQBR")
+            print_market_price(moex_client, "X5", "TQBR")
 
 if __name__ == "__main__":
     main()
