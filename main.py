@@ -265,10 +265,11 @@ def main() -> None:
         print(f"  Пополнения:         {_cval(total_deposits, comma=True)} руб\n")
 
         with Client(token) as moex_client:
-            print_market_price(moex_client, "IMOEXF", "SPBFUT", fmt_int=True, label="Индекс МосБиржи")
+            print_market_price(moex_client, "IMOEXF", "SPBFUT", fmt_int=True, label="МосБиржа")
             print_market_price(moex_client, "SBERP", "TQBR")
             print_market_price(moex_client, "TRNFP", "TQBR")
             print_market_price(moex_client, "X5", "TQBR")
+            print_market_price(moex_client, "MOEX", "TQBR")
 
 if __name__ == "__main__":
     main()
