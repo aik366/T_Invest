@@ -238,6 +238,7 @@ def main() -> None:
 
         print("\nМой капитал")
         print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<20} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+        list_ticer = []
         for ticker, agg in aggregated.items():
             avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
             div_gross = ticker_to_div.get(ticker, Decimal("0"))
@@ -248,6 +249,7 @@ def main() -> None:
             chg = (last - close) / close * 100 if close else Decimal("0")
             print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {_price_with_chg(last, chg)} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
             total_agg_value += last * agg["quantity"]
+            list_ticer.append(ticker)
 
         print(f"  Стоимость: {total_agg_value:,.2f} руб")
 
@@ -266,10 +268,8 @@ def main() -> None:
 
         with Client(token) as moex_client:
             print_market_price(moex_client, "IMOEXF", "SPBFUT", fmt_int=True, label="МосБиржа")
-            print_market_price(moex_client, "SBERP", "TQBR")
-            print_market_price(moex_client, "TRNFP", "TQBR")
-            print_market_price(moex_client, "X5", "TQBR")
-            print_market_price(moex_client, "MOEX", "TQBR")
+            for ticer in list_ticer:
+                print_market_price(moex_client, ticer, "TQBR")
 
 if __name__ == "__main__":
     main()
