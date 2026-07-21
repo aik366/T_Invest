@@ -39,6 +39,9 @@ def _cval(val: Decimal, width: int = 0, comma: bool = False) -> str:
     return f"{color}{fmt}{RESET}"
 
 
+from t_tech.invest.schemas import CandleInterval
+from datetime import timedelta
+
 def _get_price_change(client, ticker: str, class_code: str = "") -> tuple[float | None, float | None]:
     try:
         response = client.instruments.get_instrument_by(
@@ -51,9 +54,33 @@ def _get_price_change(client, ticker: str, class_code: str = "") -> tuple[float 
     instrument = response.instrument
     if instrument is None:
         return None, None
+
     ob = client.market_data.get_order_book(figi=instrument.figi, depth=1)
     value = ob.last_price.units + ob.last_price.nano / 1_000_000_000
-    close = ob.close_price.units + ob.close_price.nano / 1_000_000_000
+
+    # Получаем цену закрытия предыдущего дня из дневных свечей
+    close = None
+    try:
+        now = datetime.now(timezone.utc)
+        candles_resp = client.market_data.get_candles(
+            figi=instrument.figi,
+            from_=now - timedelta(days=10),
+            to=now,
+            interval=CandleInterval.CANDLE_INTERVAL_DAY,
+        )
+        if candles_resp.candles:
+            # Ищем последнюю завершенную свечу (предыдущий торговый день)
+            for candle in reversed(candles_resp.candles):
+                if candle.time.date() < now.date():
+                    close = candle.close.units + candle.close.nano / 1_000_000_000
+                    break
+    except Exception:
+        pass
+
+    # Fallback на close_price из стакана, если свечи не получились
+    if close is None or close == 0:
+        close = ob.close_price.units + ob.close_price.nano / 1_000_000_000
+
     change_pct = (value - close) / close * 100 if close else 0
     return value, change_pct
 
