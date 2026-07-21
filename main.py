@@ -27,12 +27,6 @@ RED = "\033[91m"
 RESET = "\033[0m"
 
 
-def _price_with_chg(price: Decimal, chg: Decimal) -> str:
-    color = GREEN if chg >= 0 else RED
-    visible = f"{price:.2f}({chg:+.2f}%)"
-    return f"{price:.2f}{color}({chg:+.2f}%){RESET}{' ' * (20 - len(visible))}"
-
-
 def _cval(val: Decimal, width: int = 0, comma: bool = False) -> str:
     color = GREEN if val >= 0 else RED
     fmt = f"{val:+,.2f}" if comma else f"{val:<+{width}.2f}"
@@ -216,7 +210,7 @@ def main() -> None:
             summary = client.portfolio_summary(acc.id)
             portfolio = client.get_portfolio(acc.id)
 
-            print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<20} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+            print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
             for pos in portfolio.positions:
                 if pos.ticker.startswith("RUB"):
                     continue
@@ -226,9 +220,7 @@ def main() -> None:
                 div_net = div_gross * DIV_TAX
                 adj_yield = yield_val + div_net
                 last = last_by_figi.get(pos.figi, pos.current_price)
-                close = close_by_figi.get(pos.figi, Decimal("0"))
-                chg = (last - close) / close * 100 if close else Decimal("0")
-                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {_price_with_chg(last, chg)} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
+                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
                 total_yield += yield_val
 
             print(f"  Стоимость: {summary.total_value:,.2f} руб")
@@ -264,7 +256,7 @@ def main() -> None:
                 agg["total_daily_yield"] += pos.daily_yield
 
         print("\nМой капитал")
-        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<20} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
         list_ticer = []
         for ticker, agg in aggregated.items():
             avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
@@ -272,9 +264,7 @@ def main() -> None:
             div_net = div_gross * DIV_TAX
             adj_yield = agg["total_yield"] + div_net
             last = last_by_figi.get(agg['figi'], agg['current_price'])
-            close = close_by_figi.get(agg['figi'], Decimal("0"))
-            chg = (last - close) / close * 100 if close else Decimal("0")
-            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {_price_with_chg(last, chg)} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
+            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
             total_agg_value += last * agg["quantity"]
             list_ticer.append(ticker)
 
