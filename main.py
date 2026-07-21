@@ -24,6 +24,10 @@ from invest_sdk.bootstrap import create_client
 
 GREEN = "\033[92m"
 RED = "\033[91m"
+BLUE = "\033[94m"
+YELLOW = "\033[93m"
+PURPLE = "\033[95m"
+ORANGE = "\033[91m"
 RESET = "\033[0m"
 
 
@@ -206,11 +210,11 @@ def main() -> None:
             if acc.type not in ("ACCOUNT_TYPE_TINKOFF", "ACCOUNT_TYPE_TINKOFF_IIS"):
                 continue
 
-            print(f"\n{acc.name}")
+            print(f"\n{ORANGE}{acc.name}{RESET}")
             summary = client.portfolio_summary(acc.id)
             portfolio = client.get_portfolio(acc.id)
 
-            print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+            print(f"  {YELLOW}{'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}{RESET}")
             for pos in portfolio.positions:
                 if pos.ticker.startswith("RUB"):
                     continue
@@ -223,7 +227,7 @@ def main() -> None:
                 print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
                 total_yield += yield_val
 
-            print(f"  Стоимость: {summary.total_value:,.2f} руб")
+            print(f"  Стоимость: {BLUE}{summary.total_value:,.2f}{RESET} руб")
             total_value += summary.total_value
             total_daily_yield += sum(
                 (pos.daily_yield for pos in portfolio.positions),
@@ -255,8 +259,8 @@ def main() -> None:
                 agg["total_yield"] += pos.expected_yield
                 agg["total_daily_yield"] += pos.daily_yield
 
-        print("\nМой капитал")
-        print(f"  {'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}")
+        print(f"\n{ORANGE}Мой капитал{RESET}")
+        print(f"  {YELLOW}{'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}{RESET}")
         list_ticer = []
         for ticker, agg in aggregated.items():
             avg_price = agg["total_cost"] / agg["quantity"] if agg["quantity"] else Decimal("0")
@@ -265,13 +269,12 @@ def main() -> None:
             adj_yield = agg["total_yield"] + div_net
             last = last_by_figi.get(agg['figi'], agg['current_price'])
             print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
-            total_agg_value += last * agg["quantity"]
             list_ticer.append(ticker)
 
-        print(f"  Стоимость: {total_agg_value:,.2f} руб")
+        print(f"  Стоимость: {BLUE}{total_value:,.2f}{RESET} руб")
 
         dividend_tax = total_div_gross * DIV_TAX
-        print(f"\n  Суммарная стоимость: {total_value:,.2f} руб")
+        print(f"\n  Суммарная стоимость: {BLUE}{total_value:,.2f}{RESET} руб")
         coupon_tax = total_coupon_gross * DIV_TAX
         total_yield += dividend_tax + total_coupon_gross + total_sale_profit - total_commission
         print(f"  Суммарный доход:    {_cval(total_yield, comma=True)} руб")
