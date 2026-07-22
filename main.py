@@ -293,3 +293,8 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    num = 1
+    while num:
+        num = int(input(f"\n  Для выхода 0: \n  Обновить   1: "))
+        if num:
+            main()
