@@ -26,7 +26,7 @@ GREEN = "\033[92m"
 RED = "\033[91m"
 BLUE = "\033[94m"
 YELLOW = "\033[93m"
-PURPLE = "\033[95m"
+PURPLE = "\033[96m"
 ORANGE = "\033[91m"
 RESET = "\033[0m"
 
@@ -210,7 +210,7 @@ def main() -> None:
             if acc.type not in ("ACCOUNT_TYPE_TINKOFF", "ACCOUNT_TYPE_TINKOFF_IIS"):
                 continue
 
-            print(f"\n{ORANGE}{acc.name}{RESET}")
+            print(f"\n{PURPLE}{acc.name}{RESET}")
             summary = client.portfolio_summary(acc.id)
             portfolio = client.get_portfolio(acc.id)
 
@@ -259,7 +259,7 @@ def main() -> None:
                 agg["total_yield"] += pos.expected_yield
                 agg["total_daily_yield"] += pos.daily_yield
 
-        print(f"\n{ORANGE}Мой капитал{RESET}")
+        print(f"\n{PURPLE}Мой капитал{RESET}")
         print(f"  {YELLOW}{'Тикер':<10} {'Кол-во':<10} {'Средняя':<12} {'Текущая':<12} {'Дивиденды':<12} {'Доход':<12} {'За день':<12}{RESET}")
         list_ticer = []
         for ticker, agg in aggregated.items():
