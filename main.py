@@ -295,6 +295,6 @@ if __name__ == "__main__":
     main()
     num = 1
     while num:
-        num = int(input(f"\n  Для выхода 0: \n  Обновить   1: "))
+        num = int(input(f"\n  {PURPLE}[0] Выход \n  [1] Обновить{RESET} "))
         if num:
             main()
