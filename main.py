@@ -224,7 +224,7 @@ def main() -> None:
                 div_net = div_gross * DIV_TAX
                 adj_yield = yield_val + div_net
                 last = last_by_figi.get(pos.figi, pos.current_price)
-                print(f"  {pos.ticker:<10} {pos.quantity:<10.2f} {pos.average_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
+                print(f"  {pos.ticker:<10} {pos.quantity:<10f} {pos.average_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(daily_yield, 12)}")
                 total_yield += yield_val
 
             print(f"  Стоимость: {BLUE}{summary.total_value:,.2f}{RESET} руб")
@@ -268,7 +268,7 @@ def main() -> None:
             div_net = div_gross * DIV_TAX
             adj_yield = agg["total_yield"] + div_net
             last = last_by_figi.get(agg['figi'], agg['current_price'])
-            print(f"  {ticker:<10} {agg['quantity']:<10.2f} {avg_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
+            print(f"  {ticker:<10} {agg['quantity']:<10f} {avg_price:<12.2f} {last:<12.2f} {_cval(div_net, 12)} {_cval(adj_yield, 12)} {_cval(agg['total_daily_yield'], 12)}")
             list_ticer.append(ticker)
 
         print(f"  Стоимость: {BLUE}{total_value:,.2f}{RESET} руб")
